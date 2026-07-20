@@ -1,18 +1,17 @@
 /**
- * Deep Research Extension — web_search + web_extract tools
+ * Deep Research Extension - web_search + web_extract tools
  *
  * Provides LLM-callable tools for internet search and content extraction.
- * Supports Tavily API (primary) and Brave Search API (fallback).
+ * Supports SearXNG (primary, self-hosted) and Tavily API (fallback).
  *
- * Configuration via environment variables:
- *   TAVILY_API_KEY   — Tavily API key (free tier: 1000 req/month)
- *   BRAVE_API_KEY    — Brave Search API key (free tier: 2000 req/month)
- *
- * If neither key is set, falls back to a bash curl-based approach.
+ * Configuration:
+ *   SearXNG base URL - settings.json `deepresearch.searxngBaseUrl`
+ *                     (or SEARXNG_BASE_URL env var as fallback)
+ *   TAVILY_API_KEY   - Tavily API key (free tier: 1000 req/month)
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { SettingsManager, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
 
 // ─── Types ───
 
@@ -33,9 +32,32 @@ interface ExtractResult {
 	wordCount: number;
 }
 
+// ─── SearXNG Configuration ───
+
+/**
+ * Resolve the SearXNG base URL from pi settings.json (`deepresearch.searxngBaseUrl`)
+ * or the SEARXNG_BASE_URL env var. Project-local settings override global; env is the
+ * last resort. Returns undefined if SearXNG is not configured.
+ *
+ * Reads settings per-call via SettingsManager. pi's Settings type is closed (no
+ * custom keys), so the deepresearch key is read via a cast.
+ */
+function getSearXngBaseUrl(cwd: string): string | undefined {
+	type DeepResearchSettings = { deepresearch?: { searxngBaseUrl?: string } };
+	try {
+		const sm = SettingsManager.create(cwd);
+		const global = sm.getGlobalSettings() as unknown as DeepResearchSettings;
+		const project = sm.getProjectSettings() as unknown as DeepResearchSettings;
+		return project.deepresearch?.searxngBaseUrl ?? global.deepresearch?.searxngBaseUrl ?? process.env.SEARXNG_BASE_URL;
+	} catch {
+		// Settings file unreadable/invalid - fall back to env var.
+		return process.env.SEARXNG_BASE_URL;
+	}
+}
+
 // ─── Search Providers ───
 
-async function searchTavily(query: string, opts: { maxResults: number; searchDepth: string; includeDomains?: string[]; excludeDomains?: string[]; }): Promise<SearchResult[]> {
+async function searchTavily(query: string, opts: { maxResults: number; searchDepth: string; includeDomains?: string[]; excludeDomains?: string[]; signal?: AbortSignal; }): Promise<SearchResult[]> {
 	const apiKey = process.env.TAVILY_API_KEY;
 	if (!apiKey) throw new Error("TAVILY_API_KEY not set");
 
@@ -52,6 +74,7 @@ async function searchTavily(query: string, opts: { maxResults: number; searchDep
 		method: "POST",
 		headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
 		body: JSON.stringify(body),
+		signal: opts.signal,
 	});
 
 	if (!resp.ok) {
@@ -69,60 +92,75 @@ async function searchTavily(query: string, opts: { maxResults: number; searchDep
 	}));
 }
 
-async function searchBrave(query: string, opts: { maxResults: number }): Promise<SearchResult[]> {
-	const apiKey = process.env.BRAVE_API_KEY;
-	if (!apiKey) throw new Error("BRAVE_API_KEY not set");
-
-	const params = new URLSearchParams({ q: query, count: String(opts.maxResults) });
-	const resp = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
-		headers: { Accept: "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": apiKey },
+async function searchSearXNG(query: string, opts: { baseUrl: string; signal?: AbortSignal; }): Promise<SearchResult[]> {
+	// Strip trailing slash(es); caller provides a base URL without the /search path.
+	const base = opts.baseUrl.replace(/\/+$/, "");
+	const params = new URLSearchParams({ q: query, format: "json", pageno: "1" });
+	const resp = await fetch(`${base}/search?${params}`, {
+		headers: {
+			Accept: "application/json",
+			"User-Agent": "Mozilla/5.0 (compatible; PiDeepResearch/1.0)",
+		},
+		signal: opts.signal,
 	});
 
 	if (!resp.ok) {
 		const text = await resp.text();
-		throw new Error(`Brave API error ${resp.status}: ${text}`);
+		throw new Error(`SearXNG API error ${resp.status}: ${text}`);
 	}
 
-	const data = (await resp.json()) as { web?: { results: Array<{ title: string; url: string; description: string; age?: string }> } };
-	return (data.web?.results ?? []).map((r) => ({
-		title: r.title,
-		url: r.url,
-		snippet: r.description,
-		publishedDate: r.age,
+	const data = (await resp.json()) as {
+		results?: Array<{ title?: string; url?: string; content?: string; publishedDate?: string | null }>;
+	};
+	// SearXNG score is not 0-1 normalized, so it is dropped (the output formatter
+	// guards on `if (h.score)` and skips the Relevance line when absent).
+	return (data.results ?? []).map((r) => ({
+		title: r.title ?? "",
+		url: r.url ?? "",
+		snippet: r.content ?? "",
+		publishedDate: r.publishedDate ?? undefined,
 	}));
 }
 
-async function doSearch(query: string, opts: { maxResults: number; searchDepth: string; includeDomains?: string[]; excludeDomains?: string[]; }): Promise<{ provider: string; results: SearchResult[] }> {
-	// Try Tavily first, then Brave
-	if (process.env.TAVILY_API_KEY) {
+async function doSearch(query: string, opts: { maxResults: number; searchDepth: string; includeDomains?: string[]; excludeDomains?: string[]; signal?: AbortSignal; searxngBaseUrl?: string; }): Promise<{ provider: string; results: SearchResult[] }> {
+	// Try SearXNG first (primary), then Tavily (fallback).
+	// All SearXNG errors fall through silently to Tavily - matches the prior
+	// Tavily->Brave blanket-catch behavior. Note: a 403 (instance has json format
+	// disabled) is permanent but still falls through; see CHANGELOG.
+	if (opts.searxngBaseUrl) {
 		try {
-			const results = await searchTavily(query, opts);
-			return { provider: "tavily", results };
+			const results = await searchSearXNG(query, { baseUrl: opts.searxngBaseUrl, signal: opts.signal });
+			return { provider: "searxng", results };
 		} catch (e) {
-			// Fall through to Brave
+			// Fall through to Tavily
 		}
 	}
-	if (process.env.BRAVE_API_KEY) {
-		const results = await searchBrave(query, { maxResults: opts.maxResults });
-		return { provider: "brave", results };
+	if (process.env.TAVILY_API_KEY) {
+		const results = await searchTavily(query, opts);
+		return { provider: "tavily", results };
 	}
 	throw new Error(
-		"No search API configured. Set TAVILY_API_KEY or BRAVE_API_KEY environment variable.\n" +
-		"  Tavily: https://tavily.com (free: 1000 req/month)\n" +
-		"  Brave:  https://brave.com/search/api/ (free: 2000 req/month)"
+		"No search API configured. Configure SearXNG (settings.json `deepresearch.searxngBaseUrl` or SEARXNG_BASE_URL env var) or set TAVILY_API_KEY.\n" +
+		"  SearXNG: self-hosted, free, unlimited (https://searxng.org)\n" +
+		"  Tavily:  https://tavily.com (free: 1000 req/month)"
 	);
 }
 
 // ─── Content Extraction ───
 
-async function extractContent(url: string): Promise<ExtractResult> {
+async function extractContent(url: string, signal?: AbortSignal): Promise<ExtractResult> {
+	// Compose the agent's abort signal with a hard 15s timeout so Esc cancels
+	// and a hung page can't stall the turn. signal may be undefined in non-turn ctx.
+	const timeoutSignal = AbortSignal.timeout(15000);
+	const combined = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+
 	const resp = await fetch(url, {
 		headers: {
 			"User-Agent": "Mozilla/5.0 (compatible; PiDeepResearch/1.0)",
 			Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 		},
 		redirect: "follow",
-		signal: AbortSignal.timeout(15000),
+		signal: combined,
 	});
 
 	if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
@@ -167,9 +205,9 @@ async function extractContent(url: string): Promise<ExtractResult> {
 
 // ─── Batch Search (parallel) ───
 
-async function batchSearch(queries: string[], opts: { maxResults: number; searchDepth: string }): Promise<{ provider: string; results: Record<string, SearchResult[]> }> {
+async function batchSearch(queries: string[], opts: { maxResults: number; searchDepth: string; signal?: AbortSignal; searxngBaseUrl?: string; }): Promise<{ provider: string; results: Record<string, SearchResult[]> }> {
 	const settled = await Promise.allSettled(
-		queries.map((q) => doSearch(q, { maxResults: opts.maxResults, searchDepth: opts.searchDepth }))
+		queries.map((q) => doSearch(q, { maxResults: opts.maxResults, searchDepth: opts.searchDepth, signal: opts.signal, searxngBaseUrl: opts.searxngBaseUrl }))
 	);
 
 	let provider = "unknown";
@@ -196,7 +234,7 @@ export default function (pi: ExtensionAPI) {
 		description: [
 			"Search the web for information. Supports single query or batch queries (parallel).",
 			"Returns ranked results with title, URL, snippet, and relevance score.",
-			"Requires TAVILY_API_KEY or BRAVE_API_KEY environment variable.",
+			"Uses SearXNG (if configured) or Tavily (if TAVILY_API_KEY is set).",
 		].join(" "),
 		parameters: Type.Object({
 			query: Type.Optional(Type.String({ description: "Single search query" })),
@@ -223,13 +261,14 @@ export default function (pi: ExtensionAPI) {
 			),
 		}),
 
-		async execute(_toolCallId, params) {
+		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const maxResults = Math.min(params.max_results ?? 5, 10);
 			const searchDepth = params.search_depth ?? "basic";
+			const searxngBaseUrl = getSearXngBaseUrl(ctx.cwd);
 
 			// Batch mode
 			if (params.queries && params.queries.length > 0) {
-				const { provider, results } = await batchSearch(params.queries, { maxResults, searchDepth });
+				const { provider, results } = await batchSearch(params.queries, { maxResults, searchDepth, signal, searxngBaseUrl });
 				const totalResults = Object.values(results).reduce((s, r) => s + r.length, 0);
 				let text = `Searched ${params.queries.length} queries via ${provider}, found ${totalResults} results:\n\n`;
 
@@ -243,15 +282,12 @@ export default function (pi: ExtensionAPI) {
 						text += "\n\n";
 					}
 				}
-				return { content: [{ type: "text", text }] };
+				return { content: [{ type: "text", text }], details: {} };
 			}
 
 			// Single mode
 			if (!params.query) {
-				return {
-					content: [{ type: "text", text: "Error: provide either `query` (string) or `queries` (array)." }],
-					isError: true,
-				};
+				throw new Error("Provide either `query` (string) or `queries` (array).");
 			}
 
 			const { provider, results } = await doSearch(params.query, {
@@ -259,6 +295,8 @@ export default function (pi: ExtensionAPI) {
 				searchDepth,
 				includeDomains: params.include_domains,
 				excludeDomains: params.exclude_domains,
+				signal,
+				searxngBaseUrl,
 			});
 
 			let text = `Searched "${params.query}" via ${provider}, found ${results.length} results:\n\n`;
@@ -269,7 +307,7 @@ export default function (pi: ExtensionAPI) {
 				if (r.publishedDate) text += ` | Date: ${r.publishedDate}`;
 				text += "\n\n";
 			}
-			return { content: [{ type: "text", text }] };
+			return { content: [{ type: "text", text }], details: {} };
 		},
 	});
 
@@ -286,22 +324,24 @@ export default function (pi: ExtensionAPI) {
 			url: Type.String({ description: "URL of the web page to extract content from" }),
 		}),
 
-		async execute(_toolCallId, params) {
+		async execute(_toolCallId, params, signal) {
 			try {
-				const result = await extractContent(params.url);
+				const result = await extractContent(params.url, signal);
 				let text = `# ${result.title}\n\n`;
 				text += `**URL:** ${result.url}\n`;
 				if (result.author) text += `**Author:** ${result.author}\n`;
 				if (result.publishedDate) text += `**Published:** ${result.publishedDate}\n`;
 				text += `**Word count:** ${result.wordCount}\n\n---\n\n`;
 				text += result.content;
-				return { content: [{ type: "text", text }] };
+				return { content: [{ type: "text", text }], details: {} };
 			} catch (e: unknown) {
+				// Agent-cancelled (Esc) is not a tool failure - surface as a normal result.
+				if (signal?.aborted || (e instanceof Error && e.name === "AbortError")) {
+					return { content: [{ type: "text", text: "Cancelled" }], details: {} };
+				}
+				// Genuine failure (network, status, timeout) - throw so the LLM sees isError.
 				const msg = e instanceof Error ? e.message : String(e);
-				return {
-					content: [{ type: "text", text: `Failed to extract content from ${params.url}: ${msg}` }],
-					isError: true,
-				};
+				throw new Error(`Failed to extract content from ${params.url}: ${msg}`);
 			}
 		},
 	});
@@ -494,7 +534,7 @@ export default function (pi: ExtensionAPI) {
 				}
 			}
 
-			return { content: [{ type: "text", text }] };
+			return { content: [{ type: "text", text }], details: {} };
 		},
 	});
 }

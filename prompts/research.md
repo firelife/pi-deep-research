@@ -1,5 +1,5 @@
 ---
-description: "Deep web research on a given topic. Usage: /research [depth] topic — depth: quick|standard|deep|exhaustive (default: standard)"
+description: "Usage: /research [depth] topic — depth: quick|standard|deep|exhaustive (default: standard). Deep web research on a given topic. "
 ---
 Conduct deep research on the following topic:
 

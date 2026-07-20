@@ -118,3 +118,56 @@ consistency_weight:
   minor differences → 0.7
   contradictions → 0.3
 ```
+
+## Search Provider Configuration
+
+The `web_search` tool uses SearXNG as the primary provider and Tavily as the
+fallback. At least one must be configured.
+
+### SearXNG (primary)
+
+Self-hosted metasearch engine. Free, unlimited, and privacy-respecting.
+
+Configure the instance base URL in pi's `settings.json` (global or
+project-local `.pi/settings.json`):
+
+```json
+{
+  "deepresearch": {
+    "searxngBaseUrl": "http://localhost:8080"
+  }
+}
+```
+
+Project-local settings override global. As a fallback, set the
+`SEARXNG_BASE_URL` environment variable.
+
+**Requirements for the SearXNG instance:**
+- The base URL must **not** include the `/search` path (the tool appends it).
+  Trailing slashes are stripped. Example: `http://localhost:8080`.
+- JSON output must be enabled in the instance's `settings.yml`:
+  ```yaml
+  search:
+    formats: [html, json]
+  ```
+  Without it the API returns 403 and the tool silently falls back to Tavily.
+
+The tool sends only `q`, `format=json`, and `pageno=1`. SearXNG's relevance
+score is not 0-1 normalized, so it is omitted from results (the Relevance line
+is skipped).
+
+### Tavily (fallback)
+
+Set the `TAVILY_API_KEY` environment variable. Free tier: 1000 requests/month.
+Get a key at https://tavily.com.
+
+### Failover order
+
+1. SearXNG (if `deepresearch.searxngBaseUrl` or `SEARXNG_BASE_URL` is set)
+2. Tavily (if `TAVILY_API_KEY` is set)
+3. Error: no provider configured
+
+All SearXNG errors (network, timeout, 403, etc.) fall through silently to
+Tavily. Note that a permanent misconfiguration (e.g. JSON output disabled) is
+masked by this silent fallback - check the instance settings if SearXNG results
+never appear.

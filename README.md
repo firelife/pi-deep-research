@@ -12,15 +12,21 @@ Instead of shallow search-and-summarize, it enforces structured methodology: pla
 pi install npm:pi-deep-research
 ```
 
-Then set a search API key (at least one):
+Then configure at least one search provider:
 
 ```bash
-# Tavily (recommended, free: 1000 req/month)
-export TAVILY_API_KEY="tvly-..."
+# SearXNG (recommended, self-hosted, free, unlimited)
+export SEARXNG_BASE_URL="http://localhost:8080"
+# Or set it in pi settings.json:
+#   { "deepresearch": { "searxngBaseUrl": "http://localhost:8080" } }
 
-# Brave Search (alternative, free: 2000 req/month)
-export BRAVE_API_KEY="BSA..."
+# Tavily (fallback, free: 1000 req/month)
+export TAVILY_API_KEY="tvly-..."
 ```
+
+> **SearXNG setup**: the instance must enable JSON output in `settings.yml`
+> (`search.formats: [html, json]`), otherwise the API returns 403.
+> See https://searxng.org to self-host.
 
 ## Usage
 
@@ -189,12 +195,14 @@ Sections include:
 
 ### Search Providers
 
-| Provider | Env Variable | Free Tier |
-|----------|-------------|-----------|
-| [Tavily](https://tavily.com) (recommended) | `TAVILY_API_KEY` | 1000 req/month |
-| [Brave Search](https://brave.com/search/api/) | `BRAVE_API_KEY` | 2000 req/month |
+| Provider | Config | Free Tier |
+|----------|--------|-----------|
+| [SearXNG](https://searxng.org) (primary) | `deepresearch.searxngBaseUrl` in settings.json, or `SEARXNG_BASE_URL` env var | Self-hosted, unlimited |
+| [Tavily](https://tavily.com) (fallback) | `TAVILY_API_KEY` env var | 1000 req/month |
 
-The extension tries Tavily first, falls back to Brave. If neither is set, it shows a helpful error.
+The extension tries SearXNG first (if configured), falls back to Tavily. If neither is configured, it shows a helpful error.
+
+> **Note:** SearXNG failures (including a 403 from an instance without JSON output enabled) fall through silently to Tavily. If SearXNG appears not to work, check the instance's `search.formats` setting.
 
 ### Depth Defaults
 

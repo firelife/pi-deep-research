@@ -1,6 +1,6 @@
 {
   "name": "pi-deep-research",
-  "version": "0.1.6",
+  "version": "0.3.0",
   "description": "Deep research skill for pi — structured search, reflection, and analysis.",
   "keywords": [
     "pi-package",
@@ -15,6 +15,10 @@
     "url": "git+https://github.com/czhiming-maker/pi-deep-research.git"
   },
   "homepage": "https://github.com/czhiming-maker/pi-deep-research#readme",
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.80.7",
+    "typebox": "^1.1.38"
+  },
   "files": [
     "pi-deep-research/SKILL.md",
     "extension.ts",

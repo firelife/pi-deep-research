@@ -17,7 +17,7 @@ Conduct structured deep research with web search, multi-hop reasoning, and confi
 Uses `web_search` and `web_extract` tools registered by this package's extension.
 
 **Available tools:**
-- `web_search` — General web search (Tavily / Brave)
+- `web_search` - General web search (SearXNG / Tavily)
 - `web_extract` — Extract full content from a web page
 
 ## Behavioral Mindset
