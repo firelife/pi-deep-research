@@ -4,8 +4,8 @@
 
 **The final research report MUST be a Markdown file**, saved to the `research/` directory under the current working directory.
 
-**File naming**: `[topic]_research_[timestamp].md`
-- Example: `research/ai-coding-assistants_research_20260312.md`
+**File naming**: `[topic]-research-[timestamp].md`
+- Example: `ai-coding-assistants-research-20260312.md`
 - Save to `<cwd>/research/`, or `~/.agent/research/` if no project context
 
 **CRITICAL BOUNDARY**: This is a RESEARCH REPORT ONLY — no implementation. Do not write code, make architectural decisions, or implement findings. The user decides next steps after reading the report.

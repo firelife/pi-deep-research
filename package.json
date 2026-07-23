@@ -12,9 +12,9 @@
   "author": "agiroad",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/czhiming-maker/pi-deep-research.git"
+    "url": "git+https://github.com/firelife/pi-deep-research.git"
   },
-  "homepage": "https://github.com/czhiming-maker/pi-deep-research#readme",
+  "homepage": "https://github.com/firelife/pi-deep-research#readme",
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.80.7",
     "typebox": "^1.1.38"
