@@ -183,7 +183,7 @@ The search-checkpoint loop works like this:
 
 **The report MUST be a Markdown file.** Follow the structure in `../references/report-template.md` exactly:
 1. Generate a complete `.md` file with ALL required sections (see depth table in report-template.md)
-2. Save to `research_[topic]_[YYYYMMDD].md` in the current working directory
+2. Save to `[topic]-research-[YYYYMMDD].md` in the current working directory
 3. The report is a RESEARCH REPORT ONLY — do NOT implement findings, write code, or make system changes
 
 **STOP AFTER THE REPORT.** The user decides next steps.
