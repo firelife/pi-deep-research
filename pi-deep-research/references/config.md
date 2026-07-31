@@ -119,55 +119,32 @@ consistency_weight:
   contradictions → 0.3
 ```
 
-## Search Provider Configuration
+## Tool Configuration
 
-The `web_search` tool uses SearXNG as the primary provider and Tavily as the
-fallback. At least one must be configured.
-
-### SearXNG (primary)
-
-Self-hosted metasearch engine. Free, unlimited, and privacy-respecting.
-
-Configure the instance base URL in pi's `settings.json` (global or
-project-local `.pi/settings.json`):
+Search and page extraction use pi's built-in `web_search` and `web_read`
+tools by default. The tool names can be overridden in pi's `settings.json`
+(global or project-local `.pi/settings.json`) under the `deepresearch` key:
 
 ```json
 {
   "deepresearch": {
-    "searxngBaseUrl": "http://localhost:8080"
+    "searchTool": "web_search",
+    "extractTool": "web_read"
   }
 }
 ```
 
-Project-local settings override global. As a fallback, set the
-`SEARXNG_BASE_URL` environment variable.
+- `searchTool` - tool name used for web searches (default: `web_search`)
+- `extractTool` - tool name used for page content extraction (default: `web_read`)
 
-**Requirements for the SearXNG instance:**
-- The base URL must **not** include the `/search` path (the tool appends it).
-  Trailing slashes are stripped. Example: `http://localhost:8080`.
-- JSON output must be enabled in the instance's `settings.yml`:
-  ```yaml
-  search:
-    formats: [html, json]
-  ```
-  Without it the API returns 403 and the tool silently falls back to Tavily.
+Project-local settings override global. When a configured name differs from
+the default, the extension injects a system-prompt note each turn instructing
+the LLM to substitute the tool name in the research workflow.
 
-The tool sends only `q`, `format=json`, and `pageno=1`. SearXNG's relevance
-score is not 0-1 normalized, so it is omitted from results (the Relevance line
-is skipped).
+The extension validates the configured names on session start: if a tool is
+not registered (e.g. a custom search tool was not installed), it warns the
+user and research falls back to the built-in tools. Only already-registered
+tool names take effect; unknown names are ignored.
 
-### Tavily (fallback)
-
-Set the `TAVILY_API_KEY` environment variable. Free tier: 1000 requests/month.
-Get a key at https://tavily.com.
-
-### Failover order
-
-1. SearXNG (if `deepresearch.searxngBaseUrl` or `SEARXNG_BASE_URL` is set)
-2. Tavily (if `TAVILY_API_KEY` is set)
-3. Error: no provider configured
-
-All SearXNG errors (network, timeout, 403, etc.) fall through silently to
-Tavily. Note that a permanent misconfiguration (e.g. JSON output disabled) is
-masked by this silent fallback - check the instance settings if SearXNG results
-never appear.
+**Note:** `research_checkpoint` (the reflection gate in Phase 3) is owned by
+this extension and is not configurable.

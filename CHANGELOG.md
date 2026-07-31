@@ -4,6 +4,47 @@ description: "Changelog for pi-deep-research skill"
 
 # Changelog
 
+## [0.4.0] - 2026-07-31
+
+### BREAKING CHANGES
+- Removed the custom `web_search` and `web_extract` tools from this extension.
+  Search and page extraction now use pi's built-in `web_search` and `web_read`
+  tools (or configurable alternatives). The extension no longer ships its own
+  search/extraction implementation.
+- Removed SearXNG and Tavily configuration. The following are no longer used:
+  - settings.json key `deepresearch.searxngBaseUrl`
+  - environment variables `SEARXNG_BASE_URL` and `TAVILY_API_KEY`
+  - the `getSearXngBaseUrl`, `searchSearXNG`, `searchTavily`, `doSearch`,
+    `extractContent`, and `batchSearch` helpers
+  Configure search backends through pi's built-in `web_search` instead.
+
+### Added
+- Configurable tool names via `settings.json` under `deepresearch`:
+  - `searchTool` (default: `web_search`) - tool name used for web searches
+  - `extractTool` (default: `web_read`) - tool name used for page extraction
+  Project-local settings override global.
+- On `session_start`, the extension activates the configured tools and warns
+  the user (non-blocking) if a configured name is not registered.
+- When a configured tool name differs from the default, the extension injects a
+  system-prompt note via `before_agent_start` so the LLM substitutes the tool
+  name in the research workflow.
+- `## Tool Configuration` section in `references/config.md` documenting the
+  new keys and the activation/injection behavior.
+
+### Changed
+- `SKILL.md` references updated: `web_extract` -> `web_read`; the "Available
+  tools" section now states that search/extraction use pi's built-in tools.
+- `extension.ts` now imports `SettingsManager` only for the new tool-name
+  settings; the SearXNG-specific reader is gone.
+- `README.md` Install and Configuration sections rewritten to drop SearXNG/
+  Tavily setup and document the new tool-name settings.
+- `package.json` keyword `web-search` removed (this package no longer provides
+  a search implementation).
+
+### Notes
+- `research_checkpoint` is unchanged (pure evaluator, no I/O). It remains
+  owned by this extension and is not configurable.
+
 ## [0.3.0] - 2026-07-15
 
 ### Changed

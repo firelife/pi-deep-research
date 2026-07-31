@@ -12,21 +12,21 @@ Instead of shallow search-and-summarize, it enforces structured methodology: pla
 pi install npm:pi-deep-research
 ```
 
-Then configure at least one search provider:
+Search and page extraction use pi's built-in `web_search` and `web_read` tools,
+so no extra search-provider configuration is required. To override the tool
+names (optional), set them in pi `settings.json`:
 
-```bash
-# SearXNG (recommended, self-hosted, free, unlimited)
-export SEARXNG_BASE_URL="http://localhost:8080"
-# Or set it in pi settings.json:
-#   { "deepresearch": { "searxngBaseUrl": "http://localhost:8080" } }
-
-# Tavily (fallback, free: 1000 req/month)
-export TAVILY_API_KEY="tvly-..."
+```json
+{
+  "deepresearch": {
+    "searchTool": "web_search",
+    "extractTool": "web_read"
+  }
+}
 ```
 
-> **SearXNG setup**: the instance must enable JSON output in `settings.yml`
-> (`search.formats: [html, json]`), otherwise the API returns 403.
-> See https://searxng.org to self-host.
+Defaults are pi's built-in `web_search` / `web_read`. See
+[references/config.md](pi-deep-research/references/config.md) for details.
 
 ## Usage
 
@@ -120,7 +120,7 @@ Then ask: `Turn this report into a visual HTML page`
 
 LLMs doing "research" typically search once, skim snippets, and produce a surface-level summary. This skill fixes that by:
 
-1. **Forcing deep reading** — instructs the agent to use `web_extract` on substantive sources, not just rely on search snippets
+1. **Forcing deep reading** - instructs the agent to use `web_read` on substantive sources, not just rely on search snippets
 2. **Code-enforced reflection** — a `research_checkpoint` tool that evaluates progress against hard thresholds (min rounds, min sources, confidence score) and returns CONTINUE/PROCEED verdicts the agent must obey
 3. **Multi-hop reasoning** — Entity Expansion, Temporal Progression, Conceptual Deepening, and Causal Chain patterns with concrete examples
 4. **Analytical writing** — anti-patterns ("Source A says X. Source B says Y." ❌) vs analytical style ("Evidence converges on X because..." ✅)
@@ -186,23 +186,29 @@ Sections include:
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Research workflow, behavioral mindset, multi-hop patterns, checkpoint rules |
-| `extension.ts` | `web_search` + `web_extract` + `research_checkpoint` tools |
+| `extension.ts` | `research_checkpoint` tool + search/extract tool wiring |
 | `prompts/research.md` | `/research` slash command template |
 | `references/config.md` | Depth thresholds, credibility tiers, confidence formula |
 | `references/report-template.md` | Report structure, writing anti-patterns, quality requirements |
 
 ## Configuration
 
-### Search Providers
+### Tools
 
-| Provider | Config | Free Tier |
-|----------|--------|-----------|
-| [SearXNG](https://searxng.org) (primary) | `deepresearch.searxngBaseUrl` in settings.json, or `SEARXNG_BASE_URL` env var | Self-hosted, unlimited |
-| [Tavily](https://tavily.com) (fallback) | `TAVILY_API_KEY` env var | 1000 req/month |
+Search and extraction use pi's built-in `web_search` / `web_read`. Override
+the tool names in `settings.json` under `deepresearch`:
 
-The extension tries SearXNG first (if configured), falls back to Tavily. If neither is configured, it shows a helpful error.
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `searchTool` | `web_search` | Tool name used for web searches |
+| `extractTool` | `web_read` | Tool name used for page content extraction |
 
-> **Note:** SearXNG failures (including a 403 from an instance without JSON output enabled) fall through silently to Tavily. If SearXNG appears not to work, check the instance's `search.formats` setting.
+Project-local settings override global. When a configured name differs from
+the default, the extension injects a system-prompt note so the LLM uses the
+configured tool. Unknown tool names are reported and ignored.
+
+`research_checkpoint` (the reflection gate) is owned by this extension and is
+not configurable.
 
 ### Depth Defaults
 

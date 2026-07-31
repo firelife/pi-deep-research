@@ -128,12 +128,12 @@ For each contradiction:
 
 ## Sources
 
-| # | Title | URL | Date | Credibility |
-|---|-------|-----|------|:-----------:|
-| 1 | [Title] | [url] | YYYY-MM-DD | ⭐ Tier 1 |
-| 2 | [Title] | [url] | YYYY-MM-DD | 🔵 Tier 2 |
-| 3 | [Title] | [url] | YYYY-MM-DD | 🟡 Tier 3 |
-| 4 | [Title] | [url] | YYYY-MM-DD | 🔴 Tier 4 |
+| # | Title | Date | Credibility |
+|---|-------|------|:-----------:|
+| 1 | [Title](url) | YYYY-MM-DD | ⭐ Tier 1 |
+| 2 | [Title](url) | YYYY-MM-DD | 🔵 Tier 2 |
+| 3 | [Title](url) | YYYY-MM-DD | 🟡 Tier 3 |
+| 4 | [Title](url) | YYYY-MM-DD | 🔴 Tier 4 |
 ```
 
 ---
