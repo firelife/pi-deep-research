@@ -164,7 +164,7 @@ The search-checkpoint loop works like this:
 4. When the tool says CONTINUE, follow its specific guidance on which sub-questions to focus on.
 5. Increment the `round` number each time you call the checkpoint.
 
-**Confidence scoring guide** (be honest, use the formula from config.md):
+**Confidence scoring guide** (be honest, use the formula from `references/config.md`):
 - 1 source, Tier 3-4 → confidence ~20-30%
 - 1 source, Tier 1-2 → confidence ~40-50%
 - 2 sources agree, Tier 2 → confidence ~60-70%
@@ -183,7 +183,7 @@ The search-checkpoint loop works like this:
 
 **The report MUST be a Markdown file.** Follow the structure in `references/report-template.md` exactly:
 1. Generate a complete `.md` file with ALL required sections (see depth table in report-template.md)
-2. Save to `[topic]-research-[YYYYMMDD].md` in the current working directory
+2. Save to `[topic]-research-[YYYYMMDD].md` in `research/` directory under the current working directory
 3. The report is a RESEARCH REPORT ONLY — do NOT implement findings, write code, or make system changes
 
 **STOP AFTER THE REPORT.** The user decides next steps.

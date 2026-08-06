@@ -4,7 +4,7 @@
 
 **The final research report MUST be a Markdown file**, saved to the `research/` directory under the current working directory.
 
-**File naming**: `[topic]-research-[timestamp].md`
+**File naming**: `[topic]-research-[YYYYMMDD].md`
 - Example: `ai-coding-assistants-research-20260312.md`
 - Save to `<cwd>/research/`, or `~/.agent/research/` if no project context
 
