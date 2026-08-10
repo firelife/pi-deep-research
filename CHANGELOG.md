@@ -4,6 +4,32 @@ description: "Changelog for pi-deep-research skill"
 
 # Changelog
 
+## [0.4.1] - 2026-08-10
+
+### Fixed
+- **npm package missing `references/`**: `package.json` `files` listed
+  `"references/"` but the actual directory is `pi-deep-research/references/`,
+  so `config.md` and `report-template.md` were not included in the tarball.
+  The skill instructs the LLM to read these files first, so the installed skill
+  was effectively broken. Fixed the path to `pi-deep-research/references/`.
+- **README images 404**: all image URLs pointed at
+  `raw.githubusercontent.com/czhiming-maker/...` (wrong owner; the repo is
+  `firelife/pi-deep-research`). Switched to repo-relative `docs/xxx.png` paths
+  so they render on GitHub regardless of owner/fork.
+- **README filename format mismatch**: README said `research_[topic]_[YYYYMMDD].md`
+  (underscores) but `SKILL.md` and `report-template.md` use
+  `[topic]-research-[YYYYMMDD].md` (hyphens). Aligned README to the hyphen format.
+- **Report write failures on long reports**: Phase 4 wrote the entire report in
+  a single tool call, which hit output-token limits / write failures on
+  `deep`/`exhaustive` reports. Split into <=3000-char chunks: `write` creates
+  the file with the header + Executive Summary, then each subsequent section is
+  appended with a quoted heredoc (`cat >> "<file>" <<'PI_CHUNK_EOF'`). Split only
+  at natural boundaries; never inside a paragraph, table, code block, or link.
+
+### Changed
+- `package.json`: bumped to 0.4.1; added `docs/` to `files`; added a `typecheck`
+  script placeholder (tsconfig + typecheck land in 0.5.0).
+
 ## [0.4.0] - 2026-07-31
 
 ### BREAKING CHANGES

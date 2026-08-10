@@ -1,6 +1,6 @@
 {
   "name": "pi-deep-research",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Deep research skill for pi — structured search, reflection, and analysis.",
   "keywords": [
     "pi-package",
@@ -14,15 +14,19 @@
     "url": "git+https://github.com/firelife/pi-deep-research.git"
   },
   "homepage": "https://github.com/firelife/pi-deep-research#readme",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.80.7",
     "typebox": "^1.1.38"
   },
   "files": [
     "pi-deep-research/SKILL.md",
+    "pi-deep-research/references/",
     "extension.ts",
     "prompts/",
-    "references/",
+    "docs/",
     "CHANGELOG.md",
     "LICENSE",
     "README.md"
