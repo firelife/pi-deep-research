@@ -1,13 +1,21 @@
 # Research Configuration
 
+> **Single source of truth for thresholds**: the numeric values below MUST match
+> the `DEPTH_THRESHOLDS` constant in `extension.ts`. If you change one, change
+> both. Field names here mirror the code (`minSearchRounds`, `maxSearchRounds`,
+> `minSources`, `confidenceThreshold`, `minAnsweredRatio`) so they can be
+> compared at a glance.
+
 ## Depth Levels
 
 ### Quick
 ```yaml
 depth: quick
-max_searches: 3
-max_sources: 5
-confidence_threshold: 60
+minSearchRounds: 1
+maxSearchRounds: 3
+minSources: 3
+confidenceThreshold: 60
+minAnsweredRatio: 0.6
 time_budget: "2 minutes"
 strategy: "Direct search → extract → report"
 use_cases:
@@ -19,9 +27,11 @@ use_cases:
 ### Standard (default)
 ```yaml
 depth: standard
-max_searches: 6
-max_sources: 10
-confidence_threshold: 75
+minSearchRounds: 2
+maxSearchRounds: 6
+minSources: 5
+confidenceThreshold: 75
+minAnsweredRatio: 0.7
 time_budget: "5 minutes"
 strategy: "Plan → search → reflect → fill gaps → report"
 use_cases:
@@ -33,9 +43,11 @@ use_cases:
 ### Deep
 ```yaml
 depth: deep
-max_searches: 10
-max_sources: 15
-confidence_threshold: 85
+minSearchRounds: 3
+maxSearchRounds: 10
+minSources: 10
+confidenceThreshold: 85
+minAnsweredRatio: 0.8
 time_budget: "10 minutes"
 strategy: "Decompose → parallel search → cross-reference → iterate → comprehensive report"
 use_cases:
@@ -47,9 +59,11 @@ use_cases:
 ### Exhaustive
 ```yaml
 depth: exhaustive
-max_searches: 20
-max_sources: 30
-confidence_threshold: 95
+minSearchRounds: 5
+maxSearchRounds: 20
+minSources: 15
+confidenceThreshold: 95
+minAnsweredRatio: 0.9
 time_budget: "20 minutes"
 strategy: "Full decomposition → systematic search → multi-hop reasoning → verify all claims → detailed report with appendices"
 use_cases:

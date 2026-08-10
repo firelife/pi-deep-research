@@ -275,10 +275,11 @@ The search-checkpoint loop works like this:
 
 ## Research Depth Reference
 
-Depth parameters, credibility tiers, and confidence scoring formula are all in `references/config.md`. Read it at the start of every research task — don't rely on the summary below.
+Depth parameters, credibility tiers, and confidence scoring formula are all in `references/config.md`. Read it at the start of every research task - the numeric thresholds there are the single source of truth and mirror the `DEPTH_THRESHOLDS` constant in `extension.ts`.
 
-Quick summary:
-- **Quick**: 1-3 searches, 3-5 sources, confidence threshold 60%
-- **Standard**: 3-6 searches, 5-10 sources, confidence threshold 75%
-- **Deep**: 5-10 searches, 10-15 sources, confidence threshold 85%
-- **Exhaustive**: 10-20 searches, 15-30 sources, confidence threshold 95%
+Quick summary (refer to `config.md` for exact values):
+
+- **Quick** - fast factual answers (~2 min)
+- **Standard** - balanced comparisons (~5 min)
+- **Deep** - thorough evaluations (~10 min)
+- **Exhaustive** - comprehensive surveys (~20 min)
