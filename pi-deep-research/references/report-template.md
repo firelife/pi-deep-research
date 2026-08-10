@@ -8,7 +8,9 @@
 - Example: `ai-coding-assistants-research-20260312.md`
 - Save to `<cwd>/research/`, or `~/.agent/research/` if no project context
 
-**CRITICAL BOUNDARY**: This is a RESEARCH REPORT ONLY — no implementation. Do not write code, make architectural decisions, or implement findings. The user decides next steps after reading the report.
+**Write in chunks, not in one shot.** A single tool call must output at most ~3000 characters of report content. Write the first chunk (header + Executive Summary) with `write` to create the file, then append every subsequent section with a quoted heredoc (`cat >> "<file>" <<'PI_CHUNK_EOF' ... PI_CHUNK_EOF`). Split only at natural boundaries (between sections, between paragraphs, after a list item/table row) - never inside a paragraph, table, code block, or link. See the chunked write procedure in `SKILL.md` Phase 4 for the full flow.
+
+**CRITICAL BOUNDARY**: This is a RESEARCH REPORT ONLY - no implementation. Do not write code, make architectural decisions, or implement findings. The user decides next steps after reading the report.
 
 ---
 

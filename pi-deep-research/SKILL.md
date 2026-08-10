@@ -177,14 +177,64 @@ The search-checkpoint loop works like this:
 - A sub-question leads to a bigger question → split it or add a new sub-question
 - Dead end on a query → rephrase with different terminology, try different domains
 
-### Phase 4 — Synthesize & Report
+### Phase 4 - Synthesize & Report
 
 **Only enter this phase after receiving a 🟢 PROCEED verdict from `research_checkpoint`.**
 
-**The report MUST be a Markdown file.** Follow the structure in `references/report-template.md` exactly:
-1. Generate a complete `.md` file with ALL required sections (see depth table in report-template.md)
-2. Save to `[topic]-research-[YYYYMMDD].md` in `research/` directory under the current working directory
-3. The report is a RESEARCH REPORT ONLY — do NOT implement findings, write code, or make system changes
+**The report MUST be a Markdown file.** Follow the structure in `references/report-template.md` exactly. The report is a RESEARCH REPORT ONLY - do NOT implement findings, write code, or make system changes.
+
+**Write the report in CHUNKS, not in one shot.** A single tool call must output at most ~3000 characters of report content. Writing the entire report at once triggers output-token limits and write failures. Split at natural section boundaries and append sequentially.
+
+**Chunked write procedure:**
+
+1. **Create the directory and file path**
+   - Directory: `research/` under the current working directory (or `~/.agent/research/` if no project context)
+   - Filename: `[topic]-research-[YYYYMMDD].md`
+   - Example: `research/ai-coding-assistants-research-20260312.md`
+
+2. **First chunk - `write` (creates the file)**
+   - Contents: Header (title, date, depth, confidence, sources count) + `## Executive Summary`
+   - Keep this chunk ≤ 3000 characters.
+
+3. **Subsequent chunks - append with a quoted heredoc**
+   - Each chunk appends one or more sections in template order: Key Findings → Detailed Analysis (one sub-question per chunk if long) → Comparison → Contradictions → Uncertainties → Recommendations → Methodology + Sources. See the depth table in `report-template.md` for which sections your depth requires.
+   - Use a **quoted** heredoc so markdown content is written verbatim - no shell expansion of `$`, backticks, or `\`:
+     ```bash
+     cat >> "research/<topic>-research-<YYYYMMDD>.md" <<'PI_CHUNK_EOF'
+
+     ## Section Title
+
+     ...content...
+     PI_CHUNK_EOF
+     ```
+   - The quotes around `'PI_CHUNK_EOF'` disable all shell interpolation - safe for code blocks, LaTeX, links, and symbols.
+   - Keep each chunk ≤ 3000 characters. If a single section exceeds 3000 characters (e.g. a long Detailed Analysis sub-question), split it across multiple `cat >>` calls.
+   - A blank line at the start of each heredoc body keeps markdown section spacing correct.
+
+4. **Verify completeness**
+   - After the last chunk, read the first ~20 and last ~20 lines of the file to confirm the header and the Sources table are both intact.
+
+**Splitting rules - strict:**
+- ✅ Split between sections (after a section's last line, before the next `##` heading)
+- ✅ Split between paragraphs (on a blank line)
+- ✅ Split after a complete list item or table row
+- ❌ NEVER split inside a paragraph
+- ❌ NEVER split inside a table (between header and rows, or mid-row)
+- ❌ NEVER split inside a code block
+- ❌ NEVER split a markdown link across chunks
+
+**Suggested chunk plan** (adapt to depth):
+
+| Chunk | Contents | Method |
+|-------|----------|--------|
+| 1 | Header + Executive Summary | `write` (create) |
+| 2 | Key Findings | `cat >>` |
+| 3..N | Detailed Analysis (one sub-question per chunk if long) | `cat >>` |
+| N+1 | Comparison (if applicable) | `cat >>` |
+| N+2 | Contradictions & Debates | `cat >>` |
+| N+3 | Uncertainties & Gaps | `cat >>` |
+| N+4 | Recommendations | `cat >>` |
+| N+5 | Methodology + Sources | `cat >>` |
 
 **STOP AFTER THE REPORT.** The user decides next steps.
 
