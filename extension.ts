@@ -16,6 +16,7 @@
 
 import { SettingsManager, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { evaluateCheckpoint } from "./checkpoint.js";
 
 // ─── Configuration ───
 
@@ -52,19 +53,6 @@ export default function (pi: ExtensionAPI) {
 	// ── Tool: research_checkpoint ──
 	// Hard gate: LLM must call this after each search round.
 	// Code decides whether to continue searching or allow synthesis.
-
-	const DEPTH_THRESHOLDS: Record<string, {
-		minSearchRounds: number;
-		maxSearchRounds: number;
-		minSources: number;
-		confidenceThreshold: number;
-		minAnsweredRatio: number;
-	}> = {
-		quick:      { minSearchRounds: 1, maxSearchRounds: 3,  minSources: 3,  confidenceThreshold: 60, minAnsweredRatio: 0.6 },
-		standard:   { minSearchRounds: 2, maxSearchRounds: 6,  minSources: 5,  confidenceThreshold: 75, minAnsweredRatio: 0.7 },
-		deep:       { minSearchRounds: 3, maxSearchRounds: 10, minSources: 10, confidenceThreshold: 85, minAnsweredRatio: 0.8 },
-		exhaustive: { minSearchRounds: 5, maxSearchRounds: 20, minSources: 15, confidenceThreshold: 95, minAnsweredRatio: 0.9 },
-	};
 
 	pi.registerTool({
 		name: "research_checkpoint",
@@ -103,84 +91,37 @@ export default function (pi: ExtensionAPI) {
 		}),
 
 		async execute(_toolCallId, params) {
-			const thresholds = DEPTH_THRESHOLDS[params.depth] ?? DEPTH_THRESHOLDS.standard;
-			const totalQuestions = params.sub_questions.length;
-			const answeredCount = params.sub_questions.filter(q => q.answered).length;
-			const answeredRatio = totalQuestions > 0 ? answeredCount / totalQuestions : 0;
-			const avgConfidence = totalQuestions > 0
-				? params.sub_questions.reduce((sum, q) => sum + q.confidence, 0) / totalQuestions
-				: 0;
-			const minConfidence = totalQuestions > 0
-				? Math.min(...params.sub_questions.map(q => q.confidence))
-				: 0;
-			const hasContradictions = (params.contradictions?.length ?? 0) > 0;
-			const lowConfidenceQuestions = params.sub_questions.filter(q => q.confidence < 40);
-			const medConfidenceQuestions = params.sub_questions.filter(q => q.confidence >= 40 && q.confidence < thresholds.confidenceThreshold);
-
-			// ── Evaluate ──
-			const issues: string[] = [];
-			let verdict: "CONTINUE" | "PROCEED" = "PROCEED";
-
-			// Rule 1: Haven't done minimum search rounds
-			if (params.round < thresholds.minSearchRounds) {
-				verdict = "CONTINUE";
-				issues.push(`⛔ Min search rounds not met: ${params.round}/${thresholds.minSearchRounds} rounds`);
-			}
-
-			// Rule 2: Not enough sources
-			if (params.total_sources < thresholds.minSources) {
-				verdict = "CONTINUE";
-				issues.push(`⛔ Not enough sources: ${params.total_sources}/${thresholds.minSources} sources`);
-			}
-
-			// Rule 3: Too many unanswered questions
-			if (answeredRatio < thresholds.minAnsweredRatio) {
-				verdict = "CONTINUE";
-				issues.push(`⛔ Answered ratio too low: ${answeredCount}/${totalQuestions} (${(answeredRatio * 100).toFixed(0)}% < ${(thresholds.minAnsweredRatio * 100).toFixed(0)}%)`);
-			}
-
-			// Rule 4: Average confidence below threshold
-			if (avgConfidence < thresholds.confidenceThreshold) {
-				verdict = "CONTINUE";
-				issues.push(`⛔ Average confidence too low: ${avgConfidence.toFixed(0)}% < ${thresholds.confidenceThreshold}%`);
-			}
-
-			// Rule 5: Any question with very low confidence
-			if (lowConfidenceQuestions.length > 0 && params.round < thresholds.maxSearchRounds) {
-				verdict = "CONTINUE";
-				const names = lowConfidenceQuestions.map(q => `"${q.question}" (${q.confidence}%)`).join(", ");
-				issues.push(`⛔ Low-confidence sub-questions (<40%): ${names}`);
-			}
-
-			// Rule 6: Unresolved contradictions
-			if (hasContradictions && params.round < thresholds.maxSearchRounds) {
-				verdict = "CONTINUE";
-				issues.push(`⚠️ Unresolved contradictions (${params.contradictions!.length}) - search for authoritative sources to verify`);
-			}
-
-			// Safety valve: don't exceed max rounds
-			if (params.round >= thresholds.maxSearchRounds) {
-				verdict = "PROCEED";
-				if (issues.length > 0) {
-					issues.push(`⚠️ Max search rounds reached (${thresholds.maxSearchRounds}). Proceeding to report. Remaining issues will be noted in "Uncertainties & Gaps".`);
-				}
-			}
+			const result = evaluateCheckpoint(params);
+			const {
+				verdict,
+				issues,
+				threshold,
+				answeredCount,
+				totalQuestions,
+				answeredRatio,
+				avgConfidence,
+				minConfidence,
+				lowConfidenceQuestions,
+				medConfidenceQuestions,
+				hasContradictions,
+			} = result;
+			const round = Math.max(1, Math.floor(params.round));
 
 			// ── Build response ──
 			const statusBar = `${"█".repeat(Math.round(avgConfidence / 5))}${"░".repeat(20 - Math.round(avgConfidence / 5))}`;
 
-			let text = `## Research Checkpoint - Round ${params.round}\n\n`;
+			let text = `## Research Checkpoint - Round ${round}\n\n`;
 			text += `**Depth:** ${params.depth} | **Verdict: ${verdict === "CONTINUE" ? "🔴 CONTINUE SEARCHING" : "🟢 PROCEED TO REPORT"}**\n\n`;
 			text += `### Progress\n`;
-			text += `- Search rounds: ${params.round} / ${thresholds.minSearchRounds}-${thresholds.maxSearchRounds}\n`;
-			text += `- Sources collected: ${params.total_sources} / ${thresholds.minSources} (minimum)\n`;
+			text += `- Search rounds: ${round} / ${threshold.minSearchRounds}-${threshold.maxSearchRounds}\n`;
+			text += `- Sources collected: ${params.total_sources} / ${threshold.minSources} (minimum)\n`;
 			text += `- Sub-questions answered: ${answeredCount}/${totalQuestions} (${(answeredRatio * 100).toFixed(0)}%)\n`;
-			text += `- Avg confidence: ${statusBar} ${avgConfidence.toFixed(0)}% (threshold: ${thresholds.confidenceThreshold}%)\n`;
+			text += `- Avg confidence: ${statusBar} ${avgConfidence.toFixed(0)}% (threshold: ${threshold.confidenceThreshold}%)\n`;
 			text += `- Min confidence: ${minConfidence.toFixed(0)}%\n`;
 
 			text += `\n### Sub-question Status\n`;
 			for (const q of params.sub_questions) {
-				const icon = q.confidence >= thresholds.confidenceThreshold ? "✅" :
+				const icon = q.confidence >= threshold.confidenceThreshold ? "✅" :
 				             q.confidence >= 40 ? "🟡" : "🔴";
 				text += `${icon} [${q.confidence}%] ${q.question} - ${q.source_count} sources (Tier ${q.best_source_tier})\n`;
 			}

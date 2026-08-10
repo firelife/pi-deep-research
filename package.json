@@ -15,16 +15,20 @@
   },
   "homepage": "https://github.com/firelife/pi-deep-research#readme",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx extension.test.ts"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.80.7",
-    "typebox": "^1.1.38"
+    "tsx": "^4.23.12",
+    "typebox": "^1.1.38",
+    "typescript": "^5.9.3"
   },
   "files": [
     "pi-deep-research/SKILL.md",
     "pi-deep-research/references/",
     "extension.ts",
+    "checkpoint.ts",
     "prompts/",
     "docs/",
     "CHANGELOG.md",
