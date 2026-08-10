@@ -42,7 +42,8 @@ function getDeepResearchSettings(cwd: string): DeepResearchSettings {
 			searchTool: project.deepresearch?.searchTool ?? global.deepresearch?.searchTool,
 			extractTool: project.deepresearch?.extractTool ?? global.deepresearch?.extractTool,
 		};
-	} catch {
+	} catch (err) {
+		console.warn(`deepresearch: failed to read settings, using defaults.`, err);
 		return {};
 	}
 }
