@@ -183,7 +183,7 @@ The search-checkpoint loop works like this:
 
 **The report MUST be a Markdown file.** Follow the structure in `references/report-template.md` exactly. The report is a RESEARCH REPORT ONLY - do NOT implement findings, write code, or make system changes.
 
-**Write the report in CHUNKS, not in one shot.** A single tool call must output at most ~3000 characters of report content. Writing the entire report at once triggers output-token limits and write failures. Split at natural section boundaries and append sequentially.
+**Write the report in CHUNKS, not in one shot.** A single tool call must output at most ~8000 characters of report content. Writing the entire report at once triggers output-token limits and write failures. Split at natural section boundaries and append sequentially.
 
 **Chunked write procedure:**
 
@@ -194,7 +194,7 @@ The search-checkpoint loop works like this:
 
 2. **First chunk - `write` (creates the file)**
    - Contents: Header (title, date, depth, confidence, sources count) + `## Executive Summary`
-   - Keep this chunk ≤ 3000 characters.
+   - Keep this chunk ≤ 8000 characters.
 
 3. **Subsequent chunks - append with a quoted heredoc**
    - Each chunk appends one or more sections in template order: Key Findings → Detailed Analysis (one sub-question per chunk if long) → Comparison → Contradictions → Uncertainties → Recommendations → Methodology + Sources. See the depth table in `report-template.md` for which sections your depth requires.
@@ -208,7 +208,7 @@ The search-checkpoint loop works like this:
      PI_CHUNK_EOF
      ```
    - The quotes around `'PI_CHUNK_EOF'` disable all shell interpolation - safe for code blocks, LaTeX, links, and symbols.
-   - Keep each chunk ≤ 3000 characters. If a single section exceeds 3000 characters (e.g. a long Detailed Analysis sub-question), split it across multiple `cat >>` calls.
+   - Keep each chunk ≤ 8000 characters. If a single section exceeds 8000 characters (e.g. a long Detailed Analysis sub-question), split it across multiple `cat >>` calls.
    - A blank line at the start of each heredoc body keeps markdown section spacing correct.
 
 4. **Verify completeness**
