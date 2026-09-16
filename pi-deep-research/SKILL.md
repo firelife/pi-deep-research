@@ -7,7 +7,7 @@ description: >
 license: MIT
 metadata:
   author: agiroad
-  version: "0.1.0"
+  version: "0.4.2"
   based-on: SuperClaude DeepResearch v4.1.7
 ---
 

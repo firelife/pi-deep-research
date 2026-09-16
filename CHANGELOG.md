@@ -25,6 +25,13 @@ description: "Changelog for pi-deep-research skill"
   - The earlier 8000-character budget (`3f1ea9d`) is *not* restored: it is
     already over the limit for 8K-token models. 3000 is the safe budget.
 
+### Changed
+- `pi-deep-research/SKILL.md` frontmatter `metadata.version` aligned with
+  `package.json` (`0.1.0` -> `0.4.2`). It had been stale since the 0.4.x line;
+  pi does not read this field, so the change is descriptive only.
+- `package-lock.json` version fields refreshed to `0.4.2`. They were missed when
+  `package.json` was bumped, leaving the lock stale; no dependencies changed.
+
 ### Notes
 - Verified against session transcripts rather than guessed: the failing turns
   end with `stopReason: length` right after the `PROCEED` verdict, and the
