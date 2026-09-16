@@ -171,6 +171,9 @@ Safety valve: after max rounds, forces PROCEED and flags remaining gaps.
 
 Reports are saved as Markdown files: `[topic]-research-[YYYYMMDD].md`
 
+Written in chunks (≤3000 characters per tool call) rather than one `write`, because
+whole-report writes exceed the model's per-message output-token limit and lose the file.
+
 Sections include:
 - **Executive Summary** — conclusion first, then evidence
 - **Key Findings** — ranked by importance with source citations
@@ -189,7 +192,7 @@ Sections include:
 | `extension.ts` | `research_checkpoint` tool + search/extract tool wiring |
 | `prompts/research.md` | `/research` slash command template |
 | `references/config.md` | Depth thresholds, credibility tiers, confidence formula |
-| `references/report-template.md` | Report structure, writing anti-patterns, quality requirements |
+| `references/report-template.md` | Report structure, chunked write rules, writing anti-patterns, quality requirements |
 
 ## Configuration
 

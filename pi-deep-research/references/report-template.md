@@ -8,6 +8,8 @@
 - Example: `ai-coding-assistants-research-20260312.md`
 - Save to `<cwd>/research/`, or `~/.agent/research/` if no project context
 
+**Write in chunks, never in one tool call** — at most **3000 characters** of report content per call. Whole-report `write` blows the model's per-message output-token limit and truncates the tool call, so the file is lost. Chunk 1 uses `write` (header + Executive Summary); every later chunk appends in the section order below with a quoted heredoc (`cat >> "<file>" <<'PI_CHUNK_EOF' ... PI_CHUNK_EOF`), splitting only between sections, between paragraphs, or after a complete list item / table row — never mid-paragraph, mid-table, mid-code-block, mid-link. Full procedure: `SKILL.md` Phase 4.
+
 **CRITICAL BOUNDARY**: This is a RESEARCH REPORT ONLY — no implementation. Do not write code, make architectural decisions, or implement findings. The user decides next steps after reading the report.
 
 ---

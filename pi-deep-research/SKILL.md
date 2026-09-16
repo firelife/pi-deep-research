@@ -186,6 +186,25 @@ The search-checkpoint loop works like this:
 2. Save to `[topic]-research-[YYYYMMDD].md` in `research/` directory under the current working directory
 3. The report is a RESEARCH REPORT ONLY — do NOT implement findings, write code, or make system changes
 
+**Write the report in CHUNKS — never in one tool call.** A deep/exhaustive report routinely runs past 40K characters; emitting it in a single `write` exceeds the model's per-message output-token limit (some configured models cap at 8K tokens), truncating the tool call mid-JSON so the file is never written. Thinking in the same message eats that budget even earlier.
+
+- **Budget**: at most **3000 characters** of report content per tool call — hold this even when you think you can output more.
+- **Chunk 1**: `write` creates the file with the header + `## Executive Summary`.
+- **Chunks 2..N**: append in template order (Key Findings → Detailed Analysis, one sub-question per chunk when long → Comparison → Contradictions → Uncertainties → Recommendations → Methodology + Sources) using a **quoted** heredoc:
+
+  ```bash
+  cat >> "research/<topic>-research-<YYYYMMDD>.md" <<'PI_CHUNK_EOF'
+
+  ## Section Title
+
+  ...content...
+  PI_CHUNK_EOF
+  ```
+
+  The quotes around `'PI_CHUNK_EOF'` disable shell expansion, so `$`, backticks and `\` in markdown survive verbatim. Begin each heredoc body with a blank line to keep markdown section spacing correct.
+- **Split points**: between sections, between paragraphs, or after a complete list item / table row. NEVER mid-paragraph, mid-table, mid-code-block, or mid-link.
+- **Verify**: after the last chunk, read the first and last ~20 lines to confirm the header and the Sources table are both intact.
+
 **STOP AFTER THE REPORT.** The user decides next steps.
 
 **Synthesis principles — this is where quality lives:**

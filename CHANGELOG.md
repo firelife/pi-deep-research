@@ -4,6 +4,32 @@ description: "Changelog for pi-deep-research skill"
 
 # Changelog
 
+## [0.4.2] - 2026-09-16
+
+### Fixed
+- **Report write failures on long reports (reinstated)**: `5bcd0d2` reverted
+  the chunked-write procedure that `[0.4.1]` shipped, which silently invalidated
+  that release's changelog entry and brought the failure back. A deep/exhaustive
+  report routinely runs past 40K characters, so emitting it in one `write` call
+  exceeds the model's per-message output-token limit (some configured models cap
+  at 8K tokens), truncating the tool call mid-JSON — the file is never written.
+  Phase 4 and `references/report-template.md` now require chunked writes again:
+  at most 3000 characters of report content per tool call, `write` creates the
+  file with the header + Executive Summary, and every later chunk appends in
+  template order with a quoted heredoc (`cat >> "<file>" <<'PI_CHUNK_EOF'`).
+  Split only at natural boundaries; never inside a paragraph, table, code block
+  or link.
+  - The root cause is stated inline in the rules so the procedure is not read as
+    redundant documentation and stripped again. (No reason was recorded for the
+    `5bcd0d2` revert, so this does not speculate about one.)
+  - The earlier 8000-character budget (`3f1ea9d`) is *not* restored: it is
+    already over the limit for 8K-token models. 3000 is the safe budget.
+
+### Notes
+- Verified against session transcripts rather than guessed: the failing turns
+  end with `stopReason: length` right after the `PROCEED` verdict, and the
+  preceding `thinking` block alone consumed most of the output budget.
+
 ## [0.4.1] - 2026-08-10
 
 ### Fixed
